@@ -1,0 +1,9 @@
+# Python Virtual Environment
+venv/
+
+# Node.js dependencies
+node_modules/
+
+# Operating System Files (optional but recommended)
+.DS_Store
+Thumbs.db
