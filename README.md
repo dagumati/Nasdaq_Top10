@@ -1,260 +1,220 @@
-# 🚀 Nasdaq 100 Rotation Dashboard & Simulation
+# 🌍 Global Investment Research Platform
 
-**A comprehensive Python application combining a market simulation engine with a dynamic Streamlit dashboard to backtest a quarterly Nasdaq rotation strategy with multiple data provider support.**
+[![GitHub](https://img.shields.io/badge/GitHub-dagumati%2FNasdaq__Top10-181717?logo=github)](https://github.com/dagumati/Nasdaq_Top10)
 
------
+**A multi-agent financial research system for global equities, ETFs, and emerging markets — designed to help everyday investors build wealth through disciplined $100–$400 weekly contributions using fractional shares and dollar-cost averaging.**
+
+> Originally built as a Nasdaq 100 rotation strategy, now expanded into a full global investment research platform.
+> 📦 **Repo:** [https://github.com/dagumati/Nasdaq_Top10](https://github.com/dagumati/Nasdaq_Top10)
+
+---
+
+## 🗂️ Platform Overview
+
+| Tab | Module | Description |
+|-----|--------|-------------|
+| 🌍 **Global Screener** | `global_research_module.py` | Screen 100+ global ETFs, thematic funds, and stocks with composite scoring |
+| 💰 **Weekly Recommendations** | `global_research_module.py` | AI-generated weekly picks for your budget & risk profile |
+| 🏗️ **Model Portfolios & DCA** | `weekly_dca_module.py` | Pre-built portfolios + historical DCA simulation + growth projections |
+| 📊 **Nasdaq Rotation** | `nasdaq_rotation_module.py` | Original quarterly rotation strategy with benchmarks |
+| 🎯 **GT/OR Asset Selector** | `gtor_selector_module.py` | Game-theory based strategic asset selector |
+
+---
 
 ## ⚙️ Setup Instructions
 
-Follow these instructions to get the application running on your local machine.
-
-### 1\. Create Virtual Environment
-
-Create and activate a virtual environment to isolate dependencies:
+### 1. Create Virtual Environment
 
 ```bash
-# Create virtual environment
 python3 -m venv venv
-
-# Activate virtual environment
-# On macOS/Linux:
-source venv/bin/activate
-
-# On Windows:
-# venv\Scripts\activate
+source venv/bin/activate        # macOS/Linux
+# venv\Scripts\activate         # Windows
 ```
 
-### 2\. Install Dependencies
-
-Install all necessary libraries in the virtual environment:
+### 2. Install Dependencies
 
 ```bash
-# Upgrade pip first
 pip install --upgrade pip
-
-# Install all dependencies
 pip install -r requirements.txt
 ```
 
-Or install manually:
-```bash
-pip install streamlit pandas numpy requests yfinance plotly python-dateutil
-```
-
-### 3\. Verify Installation
-
-Check that all packages are installed correctly:
+### 3. Run the Platform
 
 ```bash
-pip list
-```
-
-You should see packages like `streamlit`, `pandas`, `yfinance`, `plotly`, etc.
-
-### 4\. Choose Your Data Provider
-
-The application now supports multiple data providers with different rate limits:
-
-| Provider | Rate Limits | API Key Required | Recommendation |
-|----------|-------------|------------------|----------------|
-| **Yahoo Finance** | No limits | ❌ No | ⭐ **Recommended** |
-| **Financial Modeling Prep** | 250 calls/day (free) | ✅ Yes | 🎯 **Best for historical data** |
-| **Finnhub** | 60 calls/min (free) | ✅ Yes | Good alternative |
-| **Alpha Vantage** | 5 calls/min (free) | ✅ Yes | Limited free tier |
-| **Polygon.io** | 5 calls/min (free) | ✅ Yes | Original provider |
-
-### 5\. Set API Keys (Optional)
-
-Only required if you choose a provider other than Yahoo Finance:
-
-```bash
-# For Financial Modeling Prep (recommended for historical data)
-export FMP_API_KEY="your_fmp_key_here"
-
-# For Polygon.io
-export POLYGON_API_KEY="your_polygon_key_here"
-
-# For Finnhub
-export FINNHUB_API_KEY="your_finnhub_key_here"
-
-# For Alpha Vantage
-export ALPHA_VANTAGE_API_KEY="your_alpha_vantage_key_here"
-```
-
-### 6\. Run the Dashboard
-
-Launch the Streamlit application from your terminal:
-
-```bash
-# Make sure virtual environment is activated
 source venv/bin/activate
-
-# Run the dashboard
-streamlit run nasdaq_rotation_dashboard.py
+python -m streamlit run app.py
 ```
 
-**Note:** Always activate the virtual environment before running the application.
+> ⚠️ **Important:** Always use `python -m streamlit run app.py` (not `streamlit run app.py` directly).
+> If you have Anaconda installed, the bare `streamlit` command may point to an outdated system
+> version that fails with `ModuleNotFoundError: No module named 'streamlit.cli'`.
+> Running via `python -m streamlit` ensures the active environment's version is used.
 
------
+---
 
-## ⚠️ Important Considerations
+## 🧠 New Modules (v2.0)
 
-### Time Period Range (1971-2025)
+### `global_research_module.py`
+**GlobalResearchEngine** — Core research engine that:
+- Fetches and analyzes 100+ global assets via Yahoo Finance
+- Scores each asset with a 4-factor composite (0–100):
+  - **Fundamentals** (P/E, market cap, dividend yield) → up to 30 pts
+  - **Momentum** (MA crossovers, RSI, trend) → up to 25 pts
+  - **Risk-Adjusted** (Sharpe ratio, max drawdown) → up to 25 pts
+  - **Macro Alignment** (trend strength, volume) → up to 20 pts
+- Generates ratings: `Strong Buy` / `Buy` / `Hold` / `Reduce` / `Avoid`
+- Outputs structured JSON for dashboards and APIs
 
-The simulation supports a wide range of historical periods:
+**ModelPortfolioBuilder** — 4 pre-built model portfolios:
 
-  * **Start Year**: 1971-2023 (default: 2015)
-  * **End Year**: 1978-2025 (default: 2020)
-  * The backtest relies on actual **historical data** for realistic results.
-  * You can adjust the years within the available range using the dashboard sidebar.
+| Portfolio | Target CAGR | Risk |
+|-----------|-------------|------|
+| 🌍 Global Growth | 10–15% | Medium-High |
+| 🛡️ Conservative Income | 6–9% | Low-Medium |
+| 🚀 Aggressive Innovation | 15–25% | High |
+| 🌱 ESG & Impact | 8–12% | Medium |
 
-**⚠️ Data Availability Note**: 
-  * For early years (1970s-1980s), only established companies have historical data
-  * Many modern tech companies (Google, Amazon, Tesla, etc.) didn't exist or weren't public yet
-  * The system will use fallback lists for periods with limited data availability
-  * For best results, consider using start years from 1990 onwards
+### `weekly_dca_module.py`
+**DCASimulator** — Historical DCA backtester:
+- Simulates weekly fractional share purchases with real price data
+- Tracks cost basis, unrealized gains, and CAGR per holding
+- Outputs week-by-week portfolio history
 
-### Top 10 Stock Selection
+**GrowthProjector** — Future compound growth calculator:
+- Projects portfolio value across 4 scenarios (6%, 10%, 14%, 18% CAGR)
+- Week-by-week compounding for maximum accuracy
+- Handles existing balances and variable contribution sizes
 
-The application **directly fetches the top 10 stocks** by market cap for each quarter:
+### `global_research_dashboard.py`
+Premium Streamlit dashboard with:
+- Dark glassmorphism theme with animated cards
+- Interactive Plotly charts (risk-return bubble, allocation pie, DCA growth curve)
+- JSON export for API/automation pipeline integration
 
-  * **Efficient API Usage**: Only fetches market cap for ~30 major stocks, then selects top 10
-  * **Historical Market Cap**: Uses historical market cap data for accurate ranking
-  * **Direct Selection**: No need to fetch entire Nasdaq 100 list
-  * **Focused Analysis**: Analyzes only the top performers
-  * **Fast Performance**: Reduced API calls and processing time
+---
 
-### API Rate Limits & Performance
+## 🌐 Investment Universes
 
-| Provider | Free Tier Limits | Performance Impact |
-|----------|------------------|-------------------|
-| **Yahoo Finance** | No limits | ⚡ **Fastest** - No delays |
-| **Financial Modeling Prep** | 250 calls/day | 🎯 **Best for historical accuracy** |
-| **Finnhub** | 60 calls/min | 🚀 **Fast** - Minimal delays |
-| **Alpha Vantage** | 5 calls/min | ⏳ **Slow** - 10-30 min runtime |
-| **Polygon.io** | 5 calls/min | ⏳ **Slow** - 10-30 min runtime |
+### Thematic ETFs (10 themes, ~45 ETFs)
+| Theme | Macro Tailwind | Top ETFs |
+|-------|---------------|----------|
+| AI & Robotics | 4th Industrial Revolution | BOTZ, ROBO, AIQ |
+| Clean Energy | Net Zero transition | ICLN, TAN, FAN |
+| Cybersecurity | Digital security | HACK, CIBR, BUG |
+| Semiconductor | Chip supercycle | SOXX, SMH |
+| Blockchain & Fintech | Financial digitization | BLOK, ARKF |
+| Space & Defense | Space economy | ARKX, ITA |
+| Infrastructure | Global buildout | PAVE, IFRA |
+| Water & Agriculture | Resource scarcity | PHO, MOO |
+| Genomics | Healthcare innovation | ARKG, XBI |
+| Electric Vehicles | Transportation electrification | DRIV, LIT |
 
-**Recommendation:** 
-- Use **Financial Modeling Prep** for the most accurate historical Nasdaq 100 constituents
-- Use **Yahoo Finance** for the fastest experience with no rate limits
+### Global & Regional ETFs (~50 ETFs)
+- US Broad Market, Developed International, Emerging Markets
+- India, China, Latin America, Southeast Asia, Frontier Markets
+- Bonds, Real Estate, Commodities
 
------
+### Global Growth Stocks (~60 stocks)
+- US Tech Leaders, US Innovation, Healthcare, Fintech
+- International ADRs (TSM, ASML, MELI, NVO), Dividend Aristocrats
 
-## 📊 Dashboard Features
+---
 
-### Current Functionality
+## � Weekly DCA Strategy Guide
 
-| Category | Description |
-| :--- | :--- |
-| **Top 10 Stock Selection** | ✅ Directly fetches top 10 stocks by market cap for each quarter |
-| **Multi-API Support** | ✅ Yahoo Finance, Financial Modeling Prep, Finnhub, Alpha Vantage, Polygon.io |
-| **Historical Market Cap** | ✅ Uses historical market cap data for accurate ranking |
-| **Efficient Processing** | ✅ Only processes ~30 major stocks, selects top 10 |
-| **Simulation** | ✅ Quarterly rebalancing simulation |
-| **Returns** | ✅ Portfolio growth visualization, CAGR, and total return calculation |
-| **Analysis** | ✅ Holdings breakdown by quarter, detailed trade log with timestamps |
-| **Configuration** | ✅ Configurable parameters (capital, years, top *N* stocks, API selection) |
+For a **$200/week** budget at **10% expected CAGR**:
 
-### Visual Analytics
+| Years | Total Contributed | Portfolio Value | Growth |
+|-------|-------------------|-----------------|--------|
+| 1     | $10,400           | $10,923          | +5.2%  |
+| 5     | $52,000           | $67,200          | +29%   |
+| 10    | $104,000          | $177,000         | +70%   |
+| 20    | $208,000          | $638,000         | +207%  |
 
-  * **Interactive Portfolio Growth Chart**
-  * **Most Frequently Held Stocks** bar chart
-  * **Detailed Trade Log** with rebalance actions
-  * **API Selection Interface** with rate limit information
+> *Compound interest at work — the last 10 years generate more growth than the first 10.*
 
------
+---
 
-## 🔧 Suggested Enhancements
+## 📊 Composite Scoring System
 
-These improvements will significantly enhance the accuracy and analytical depth of the simulation.
+```
+Score   Rating        Action
+80–100  Strong Buy    Accumulate aggressively via DCA
+60–79   Buy           Accumulate steadily
+45–59   Hold          Maintain; pause new contributions
+30–44   Reduce        Scale back; rebalance toward stronger assets
+0–29    Avoid         Skip; better opportunities elsewhere
+```
 
-| Enhancement | Rationale | Code Snippet Idea |
-| :--- | :--- | :--- |
-| **Transaction Costs** | Essential for modeling real-world brokerage fees and slippage. | `# In PortfolioSimulator.simulate()`<br>`transaction_cost = 0.001`<br>`portfolio_value *= (1 - transaction_cost)` |
-| **Dividend Reinvestment** | Incorporate income generated by stocks for a more accurate return. | `url = f"{POLYGON_BASE_URL}/v3/reference/dividends"` |
-| **Sector Exposure** | Analyze risk and diversification using Polygon's ticker details endpoint. | `def get_sector(self, ticker: str):` |
-| **Benchmark Comparison** | Compare performance against **SPY** or **QQQ** to evaluate alpha. | `# Fetch benchmark data`<br>`Plot side-by-side comparison` |
-| **Real Broker Integration** | Enable paper or live trading through a platform like Alpaca. | `from alpaca_trade_api import REST` |
+---
 
------
+## � JSON Output for API Integration
 
-## 🎯 Quick Wins for Better Results
+Every recommendation and portfolio can be exported as structured JSON:
 
-  * **Use Yahoo Finance:** Switch to Yahoo Finance for unlimited API calls and faster performance.
-  * **Use Historical Constituent Data:** For optimal accuracy, acquire data from vendors like **Nasdaq Data Link** or **FactSet**.
-  * **Optimize API Calls (Caching):** Use libraries like `pickle` to **save market cap and price data locally** and avoid hitting rate limits.
-  * **Parallel Processing:** Implement `concurrent.futures` to fetch multiple tickers simultaneously, drastically cutting runtime.
-  * **Add Logging:** Implement robust logging for debugging and performance tracking.
+```json
+{
+  "generated_at": "2026-02-24T19:00:00",
+  "weekly_budget": 200,
+  "risk_profile": "Moderate",
+  "recommendations": [
+    {
+      "bucket": "US Core",
+      "ticker": "VTI",
+      "weekly_amount": 35.00,
+      "fractional_shares": 0.1654,
+      "composite_score": 72.5,
+      "rating": "Buy",
+      "reason": "VTI scores 72.5/100..."
+    }
+  ]
+}
+```
 
------
-
-## 📈 Expected Performance
-
-Based on historical Nasdaq 100 performance:
-
-  * **CAGR:** 15-20% (varies by period)
-  * **Volatility:** Higher than total market due to technology concentration
-  * **Max Drawdown:** 30-50% during market corrections
-
------
-
-## ➡️ Next Steps
-
-1.  **Create and activate virtual environment** - Follow the setup instructions above.
-2.  **Start with Yahoo Finance** - No API key required and no rate limits.
-3.  Test with a **small date range first** (e.g., 2020-2022) to verify functionality.
-4.  **Monitor API usage** if using other providers to avoid hitting rate limits.
-5.  Consider **caching** market cap and price data locally for faster subsequent runs.
+---
 
 ## 🔧 Troubleshooting
 
-### Virtual Environment Issues
-
-If you encounter issues with the virtual environment:
-
 ```bash
-# Remove existing venv and recreate
-rm -rf venv
-python3 -m venv venv
+# Re-create virtual environment
+rm -rf venv && python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip
 pip install -r requirements.txt
+
+# Always run with python -m to use the active environment's streamlit
+python -m streamlit run app.py
 ```
 
-### Package Installation Issues
+### "No module named 'streamlit.cli'" Error
 
-If packages fail to install:
+This happens when `streamlit` on your PATH points to an old Anaconda installation.
+**Fix:** Always prefix with `python -m`:
 
 ```bash
-# Try installing packages individually
-pip install streamlit
-pip install pandas
-pip install yfinance
-pip install plotly
+python -m streamlit run app.py
 ```
 
-### Running the Application
+---
 
-Always ensure the virtual environment is activated:
+## ⚠️ Disclaimer
 
-```bash
-# Check if venv is activated (should show venv path)
-which python
+These tools are for **educational purposes only**. Past performance does not guarantee future results. This platform does not constitute financial advice. Always do your own research before investing.
 
-# If not activated, activate it
-source venv/bin/activate
-```
+---
 
-## 🆕 What's New
+## 🆕 Changelog
 
-- ✅ **Top 10 Stock Selection**: Directly fetches top 10 stocks by market cap for each quarter
-- ✅ **Efficient API Usage**: Only processes ~30 major stocks, selects top 10
-- ✅ **Financial Modeling Prep Integration**: Historical market cap data
-- ✅ **Historical Market Cap Ranking**: Uses historical market cap for accurate selection
-- ✅ **Multi-API Support**: Choose from 5 different data providers
-- ✅ **Yahoo Finance Integration**: No rate limits, no API key required
-- ✅ **Improved Performance**: Faster simulations with focused stock selection
-- ✅ **Better UI**: API selection dropdown with rate limit information
-- ✅ **Updated Dependencies**: Added yfinance for Yahoo Finance support
-- ✅ **Virtual Environment Setup**: Complete venv setup with all dependencies
-- ✅ **Enhanced Documentation**: Step-by-step setup instructions
+### v2.0 — Global Investment Research Platform
+- ✅ **Global Market Screener** — 100+ assets, composite scoring
+- ✅ **Weekly Recommendations** — budget-driven, risk-profile-aware
+- ✅ **4 Model Portfolios** — Global Growth, Conservative, Aggressive, ESG
+- ✅ **DCA Simulator** — historical backtest with real weekly price data
+- ✅ **Compound Growth Projector** — 4 scenarios, week-by-week compounding
+- ✅ **JSON Export** — structured output for APIs and dashboard pipelines
+- ✅ **Premium Dark UI** — glassmorphism theme, animated cards, interactive charts
+
+### v1.0 — Nasdaq Rotation Strategy
+- ✅ Quarterly Nasdaq 100 rotation with top-10 market cap selection
+- ✅ Multi-API support (Yahoo Finance, FMP, Finnhub, Alpha Vantage, Polygon)
+- ✅ GT/OR Strategic Asset Selector with SVI scoring
+- ✅ Benchmark comparison (QQQ, SPY)

@@ -1,196 +1,144 @@
-# Modular Project Structure
+# Module Structure — Global Investment Research Platform v2.0
 
-## Overview
-The application has been refactored into a modular structure for better maintainability, scalability, and code organization.
+---
 
-## File Structure
+## Backend Modules (FastAPI)
 
-```
-Nasdaq_Top10/
-├── app.py                          # Main Streamlit application (entry point)
-├── nasdaq_rotation_module.py       # Nasdaq rotation strategy logic & UI
-├── gtor_selector_module.py         # GT/OR Strategic Asset Selector logic & UI
-├── nasdaq_rotation_dashboard.py    # Original monolithic file (kept for reference)
-├── requirements.txt                # Python dependencies
-└── README.md                       # Project documentation
-```
+### `backend/main.py`
+- App factory with CORS, lifespan hooks, and router registration
+- Health endpoints: `GET /` and `GET /api/health`
+- Global exception handler with structured JSON error responses
 
-## Module Descriptions
+### `backend/models/schemas.py`
+- Pydantic v2 request/response models for all endpoints
+- Enums: `RiskProfile`, `UniverseType`, `PortfolioName`
+- Enforces validation (min/max budget, valid risk profiles, etc.)
 
-### 1. **app.py** (Main Application)
-- **Purpose**: Entry point for the Streamlit application
-- **Responsibilities**:
-  - Configure Streamlit page settings
-  - Create tab-based navigation
-  - Import and orchestrate the two main modules
-- **Usage**: `streamlit run app.py`
+### `backend/routers/screener.py`
+- `GET /api/screener/universes` — lists all universes + counts
+- `GET /api/screener/run` — screens a universe, returns ranked assets
+- `GET /api/screener/asset/{ticker}` — detailed single-asset analysis
 
-### 2. **nasdaq_rotation_module.py** (Nasdaq Strategy)
-- **Purpose**: Nasdaq Top 10 Quarterly Rotation Strategy
-- **Key Components**:
-  - `OptimizedYahooDataFetcher`: Bulk data fetching with caching
-  - `OptimizedPortfolioSimulator`: Portfolio simulation engine
-  - `nasdaq_rotation_tab()`: Main UI function for the strategy tab
-  - Helper functions for visualization and analysis
-- **Features**:
-  - Bulk API calls (5-10x faster)
-  - Smart caching to minimize redundant calls
-  - Benchmark comparison (QQQ, SPY)
-  - Full vs Add-Only rebalancing strategies
-  
-### 3. **gtor_selector_module.py** (GT/OR Asset Selector)
-- **Purpose**: Game Theory & Operations Research based asset analysis
-- **Key Components**:
-  - `gtor_asset_selector_tab()`: Main UI function
-  - Embedded HTML/CSS/JavaScript interface
-  - Simulated GT/OR analysis engine
-- **Features**:
-  - Market regime classification
-  - Strategic Vulnerability Index (SVI)
-  - Position trading recommendations
-  - Options trading strategies
-  - Beautiful dark-themed UI with Tailwind CSS
+### `backend/routers/recommendations.py`
+- `GET /api/recommendations/weekly` — AI-generated weekly buy picks
+- `GET /api/recommendations/weekly/json` — same, as raw JSON string
 
-## Benefits of Modular Structure
+### `backend/routers/portfolio.py`
+- `GET /api/portfolio/list` — template metadata (no live data)
+- `GET /api/portfolio/build` — live-scored portfolio holdings
 
-### ✅ **Maintainability**
-- Each module has a single, well-defined responsibility
-- Easier to locate and fix bugs
-- Changes in one module don't affect others
+### `backend/routers/dca.py`
+- `GET /api/dca/project` — single compound growth curve
+- `GET /api/dca/scenarios` — 4 CAGR scenarios side-by-side
+- `GET /api/dca/simulate` — historical DCA backtest
 
-### ✅ **Scalability**
-- Easy to add new analysis modules as additional tabs
-- Can independently upgrade each module
-- Simpler to add new features without cluttering the codebase
+### `backend/routers/nasdaq.py`
+- `GET /api/nasdaq/simulate` — quarterly rotation backtest
+- `GET /api/nasdaq/universe` — list of Nasdaq 100 tickers
 
-### ✅ **Testability**
-- Each module can be tested independently
-- Easier to write unit tests for specific functions
-- Can mock dependencies during testing
+---
 
-### ✅ **Collaboration**
-- Multiple developers can work on different modules simultaneously
-- Clear ownership and responsibility
-- Reduced merge conflicts
+## Core Python Modules
 
-### ✅ **Reusability**
-- Modules can be imported and used in other projects
-- Functions can be called programmatically (not just via UI)
-- Easier to create APIs or command-line tools
+### `global_research_module.py`
+**`GlobalResearchEngine`**
+- `fetch_asset_data(ticker, period)` → dict of price, returns, fundamentals
+- `calculate_composite_score(data)` → 4-component score object
+- `screen_universe(universe, top_n)` → sorted list of scored assets
+- `generate_weekly_recommendations(budget, risk_profile)` → recommendation dict
+- Internal caches: `_data_cache`, `_score_cache`
 
-## How to Run
+**`ModelPortfolioBuilder`**
+- `PORTFOLIO_TEMPLATES` — 4 portfolio definitions (Global Growth, Conservative, Aggressive, ESG)
+- `build_portfolio_with_live_data(name, weekly_budget)` → live-scored holdings
+- `get_portfolio_names()` → list of portfolio names
 
-### Run the full application:
-```bash
-streamlit run app.py
-```
+**Universe Definitions**
+- `THEMATIC_ETF_UNIVERSE` — 10 themes × ~4–6 ETFs each
+- `GLOBAL_ETF_UNIVERSE` — regional/asset-class ETFs
+- `GLOBAL_GROWTH_STOCKS` — categorized individual stocks
 
-### Use modules independently (programmatic access):
-```python
-# Import specific components
-from nasdaq_rotation_module import OptimizedYahooDataFetcher, OptimizedPortfolioSimulator
-from gtor_selector_module import gtor_asset_selector_tab
+**`export_recommendations_json(recommendations)`** → JSON string for APIs
 
-# Use the data fetcher
-fetcher = OptimizedYahooDataFetcher()
-data = fetcher.fetch_all_data_bulk("2020-01-01", "2024-12-31", rebalance_dates)
+---
 
-# Run simulations
-simulator = OptimizedPortfolioSimulator(20000, fetcher)
-results = simulator.run_simulation(...)
-```
+### `weekly_dca_module.py`
+**`DCASimulator`**
+- `simulate_dca(portfolio, weekly_budget, start_date, end_date)` → full backtest
+- `_fetch_weekly_prices(ticker, start, end)` → cached price fetch
+- `_price_cache` — in-memory price cache
 
-## Development Workflow
+**`GrowthProjector`**
+- `project_growth(weekly_contribution, expected_annual_return, years, existing_balance)` → projection dict
+- `project_multiple_scenarios(weekly_contribution, years, existing_balance)` → 4-scenario dict
 
-### Adding a new feature to Nasdaq Rotation Strategy:
-1. Edit `nasdaq_rotation_module.py`
-2. Test changes: `streamlit run app.py` and check Tab 1
-3. No need to touch other files
+---
 
-### Adding a new feature to GT/OR Selector:
-1. Edit `gtor_selector_module.py`
-2. Test changes: `streamlit run app.py` and check Tab 2
-3. No need to touch other files
+### `nasdaq_rotation_module.py`
+- `OptimizedYahooDataFetcher` — fetches Nasdaq 100 data with retry logic
+- `OptimizedPortfolioSimulator` — quarterly rotation simulation
 
-### Adding a completely new analysis tool:
-1. Create `new_module.py` with your logic
-2. Add `def new_tool_tab():` function
-3. Import in `app.py`: `from new_module import new_tool_tab`
-4. Add new tab in `app.py`: `tab3 = st.tabs(["Tab 1", "Tab 2", "New Tool"])`
-5. Call function: `with tab3: new_tool_tab()`
+### `nasdaq_rotation_dashboard.py`
+- Streamlit tab: portfolio metrics, performance charts, benchmark comparison
 
-## Migration from Monolithic File
+### `global_research_dashboard.py`
+- Three Streamlit tabs: Global Screener, Weekly Recommendations, Model Portfolios
+- Premium dark CSS theme, Plotly charts
 
-The original `nasdaq_rotation_dashboard.py` has been preserved for reference. The new modular structure maintains 100% of the original functionality while providing better organization.
+### `gtor_selector_module.py`
+- GT/OR (Game Theory / Operations Research) asset selection algorithm
+- SVI (Strategic Value Index) scoring
 
-### What changed:
-- **Before**: 1 file (1297 lines)
-- **After**: 3 files with clear separation of concerns
-  - `app.py`: 47 lines (orchestration)
-  - `nasdaq_rotation_module.py`: ~670 lines (strategy logic)
-  - `gtor_selector_module.py`: ~300 lines (GT/OR logic)
+---
 
-### What stayed the same:
-- All features and functionality
-- User interface and experience
-- Performance optimizations
-- API integrations
+## Frontend Modules (React)
 
-## Best Practices
+### `src/services/api.js`
+- Axios instance with timeout (120s) and interceptors
+- `screenerApi`, `recommendationsApi`, `portfolioApi`, `dcaApi`, `nasdaqApi`, `healthApi`
 
-### When editing modules:
-1. **Keep imports at the top** of each file
-2. **Document functions** with docstrings
-3. **Use type hints** for function parameters
-4. **Follow PEP 8** style guidelines
-5. **Test after changes** to ensure nothing breaks
+### `src/hooks/useApi.js`
+- `useApi(apiFn)` → `{ data, loading, error, execute, reset }`
 
-### When adding new modules:
-1. **Create focused modules** with single responsibility
-2. **Export main functions** explicitly
-3. **Add comprehensive docstrings** at module level
-4. **Include usage examples** in comments
+### `src/context/ThemeContext.jsx`
+- `ThemeProvider` — persists to localStorage, respects `prefers-color-scheme`
+- `useTheme()` → `{ theme, toggle }`
 
-## Troubleshooting
+### `src/components/Layout/`
+- `Layout.jsx` — shell with health check on mount
+- `Sidebar.jsx` — fixed nav with `NavLink` active states
+- `Navbar.jsx` — page title, theme toggle, API status pill
 
-### Import errors:
-```python
-# Make sure all files are in the same directory
-# Verify Python can find the modules
-import sys
-sys.path.append('/Users/vijaysarathy_d/Documents/AI_Projects/Nasdaq_Top10')
-```
+### `src/components/Cards/`
+- `MetricCard.jsx` — KPI with label, value, delta, optional icon
+- `SharedUI.jsx` — `RatingBadge`, `Loading`, `ErrorAlert`, `SectionHeader`, `ScoreBar`, `formatCurrency`, `formatPct`, `ColoredPct`
 
-### Module not found:
-- Ensure you're running from the project directory
-- Check that all `.py` files exist
-- Verify no typos in import statements
+### `src/components/Tables/`
+- `ScreenerTable.jsx` — sortable table with score bars, rating badges, colored returns
 
-### Function not defined:
-- Check that the function is defined in the module
-- Ensure the function is not indented incorrectly
-- Verify imports are correct
+### `src/pages/`
+| File | Route | Features |
+|------|-------|---------|
+| `Dashboard.jsx` | `/` | Hero, API health, feature cards |
+| `GlobalScreener.jsx` | `/screener` | Universe picker, table, radar, scatter |
+| `WeeklyRecommendations.jsx` | `/recommendations` | Budget slider, risk profile, pie, cards |
+| `ModelPortfolios.jsx` | `/portfolios` | Portfolio picker, holdings table, pie |
+| `DCASimulator.jsx` | `/dca` | Growth projection, backtest, area chart |
+| `NasdaqRotation.jsx` | `/nasdaq` | Simulation config, line chart, bar chart |
 
-## Future Enhancements
+---
 
-### Potential new modules:
-- `portfolio_optimizer.py` - Advanced portfolio optimization
-- `risk_analysis.py` - Risk metrics and VAR calculations
-- `backtesting_engine.py` - Comprehensive backtesting framework
-- `data_sources.py` - Multiple data provider integrations
-- `ml_predictions.py` - Machine learning based predictions
-- `alerts_module.py` - Real-time alerts and notifications
+## Tests
 
-## Support
+### `backend/tests/test_api.py`
+- `TestHealth` — root and health endpoints
+- `TestScreener` — universe listing, run, validation, sort order
+- `TestRecommendations` — weekly picks, invalid profile, budget bounds
+- `TestPortfolio` — list, build, validation
+- `TestDCA` — projection math, scenario ordering, simulate validation
+- `TestNasdaq` — date validation
 
-For questions or issues:
-1. Check this documentation first
-2. Review module docstrings
-3. Examine the original `nasdaq_rotation_dashboard.py` for reference
-4. Test modules independently to isolate issues
-
-## Version History
-
-- **v2.0** (Current): Modular structure with 3 separate files
-- **v1.0**: Monolithic `nasdaq_rotation_dashboard.py`
-
+### `frontend/src/__tests__/`
+- `MetricCard.test.jsx` — render, delta, no-delta
+- `SharedUI.test.jsx` — RatingBadge classes, ScoreBar fill, formatters
+- `useApi.test.js` — loading, success, error, reset, argument passing

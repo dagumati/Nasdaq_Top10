@@ -1,502 +1,262 @@
-# Application Architecture
+# Architecture — Global Investment Research Platform v2.0
 
-## 🏗️ System Architecture Diagram
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                         USER                                  │
-│                     (Web Browser)                             │
-└───────────────────────────┬──────────────────────────────────┘
-                            │
-                            ▼
-┌──────────────────────────────────────────────────────────────┐
-│                    STREAMLIT SERVER                           │
-│                                                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │                     app.py                             │  │
-│  │              (Main Entry Point - 47 lines)             │  │
-│  │                                                         │  │
-│  │  - Page configuration                                  │  │
-│  │  - Tab creation                                        │  │
-│  │  - Module orchestration                                │  │
-│  └──────────────┬───────────────────────┬─────────────────┘  │
-│                 │                       │                     │
-│                 ▼                       ▼                     │
-│  ┌──────────────────────────┐ ┌─────────────────────────┐   │
-│  │  nasdaq_rotation_module  │ │  gtor_selector_module   │   │
-│  │      (~670 lines)        │ │      (~300 lines)       │   │
-│  └──────────────────────────┘ └─────────────────────────┘   │
-│                                                               │
-└──────────────────┬──────────────────────────────┬────────────┘
-                   │                              │
-                   ▼                              ▼
-         ┌─────────────────┐           ┌──────────────────┐
-         │  Yahoo Finance  │           │  Local Storage   │
-         │      API        │           │  (HTML/JS/CSS)   │
-         └─────────────────┘           └──────────────────┘
-```
-
-## 📦 Module Dependency Graph
-
-```
-app.py
-  │
-  ├── imports nasdaq_rotation_module.py
-  │       │
-  │       ├── OptimizedYahooDataFetcher
-  │       │     │
-  │       │     └── yfinance API
-  │       │
-  │       ├── OptimizedPortfolioSimulator
-  │       │     │
-  │       │     └── OptimizedYahooDataFetcher
-  │       │
-  │       └── nasdaq_rotation_tab()
-  │             │
-  │             ├── Streamlit UI components
-  │             ├── Plotly charts
-  │             └── Pandas DataFrames
-  │
-  └── imports gtor_selector_module.py
-          │
-          └── gtor_asset_selector_tab()
-                │
-                ├── Streamlit components
-                └── Embedded HTML/CSS/JS
-```
-
-## 🎯 Data Flow Diagram
-
-### Nasdaq Rotation Strategy Flow
-
-```
-User Input (Sidebar)
-  │
-  ├── Initial Capital: $20,000
-  ├── Start Year: 2015
-  ├── End Year: 2024
-  ├── Number of Stocks: 10
-  └── Strategy: Full Rebalancing
-  │
-  ▼
-app.py → nasdaq_rotation_tab()
-  │
-  ▼
-OptimizedYahooDataFetcher
-  │
-  ├── 1. Fetch bulk price data
-  │      └── yf.download() → 50 stocks, 2015-2024
-  │
-  ├── 2. Fetch current info
-  │      └── yf.Ticker().info → Market cap, P/E, etc.
-  │
-  └── 3. Calculate historical market caps
-         └── Cache results for reuse
-  │
-  ▼
-OptimizedPortfolioSimulator
-  │
-  ├── For each quarter:
-  │   ├── Get top 10 stocks by market cap
-  │   ├── Calculate equal-weight allocation
-  │   ├── Simulate trades
-  │   └── Track portfolio value
-  │
-  └── Calculate benchmarks (QQQ, SPY)
-  │
-  ▼
-Results Visualization
-  │
-  ├── Portfolio value chart
-  ├── Holdings breakdown
-  ├── Quarterly stock analysis
-  └── Trade log
-```
-
-### GT/OR Asset Selector Flow
-
-```
-User Input
-  │
-  └── Asset Symbol: TSLA
-  │
-  ▼
-app.py → gtor_asset_selector_tab()
-  │
-  ▼
-Embedded HTML/JavaScript
-  │
-  ├── 1. Validate input
-  │
-  ├── 2. Show loading spinner
-  │
-  ├── 3. Simulate GT/OR analysis
-  │      │
-  │      ├── Check hardcoded data (TSLA, SPY, GLD)
-  │      │
-  │      └── OR generate random analysis
-  │
-  └── 4. Display results
-         │
-         ├── Market regime classification
-         ├── Game theory model
-         ├── Strategic Vulnerability Index (SVI)
-         ├── Position trading recommendations
-         └── Options trading strategy
-```
-
-## 🔄 Component Interaction
-
-### Tab Navigation
-
-```
-┌─────────────────────────────────────────────────┐
-│            Streamlit Tab Bar                    │
-├─────────────────────┬───────────────────────────┤
-│  📊 Nasdaq Rotation │ 🎯 GT/OR Asset Selector   │
-│      (Active)       │                           │
-└──────────┬──────────┴───────────────────────────┘
-           │
-           ▼
-┌──────────────────────────────────────────┐
-│    nasdaq_rotation_tab()                 │
-│                                          │
-│  ┌────────────────────────────────────┐ │
-│  │        Sidebar Controls            │ │
-│  │  - Initial Capital                 │ │
-│  │  - Date Range                      │ │
-│  │  - Strategy Selection              │ │
-│  │  - [Run Simulation] Button         │ │
-│  └────────────────────────────────────┘ │
-│                                          │
-│  ┌────────────────────────────────────┐ │
-│  │        Main Content Area           │ │
-│  │  - Portfolio Growth Chart          │ │
-│  │  - Benchmark Comparison            │ │
-│  │  - Holdings Breakdown              │ │
-│  │  - Quarterly Analysis              │ │
-│  │  - Trade Log                       │ │
-│  └────────────────────────────────────┘ │
-└──────────────────────────────────────────┘
-```
-
-## 💾 Caching Strategy
-
-```
-OptimizedYahooDataFetcher
-  │
-  ├── _price_cache: Dict[str, pd.DataFrame]
-  │     └── Stores: Historical prices for all tickers
-  │
-  ├── _info_cache: Dict[str, Dict]
-  │     └── Stores: Current market cap, P/E, price
-  │
-  └── _market_cap_cache: Dict[str, float]
-        └── Stores: Historical market caps by date
-        
-Cache Keys:
-  - Price cache: ticker (e.g., "AAPL")
-  - Market cap cache: "ticker_YYYY-MM-DD" (e.g., "AAPL_2024-01-01")
-
-Cache Benefits:
-  ✅ Reduces API calls from 1000+ to ~100
-  ✅ 5-10x faster execution
-  ✅ Minimizes rate limiting issues
-  ✅ Improves user experience
-```
-
-## 🎨 UI Component Hierarchy
-
-### Nasdaq Rotation Module UI
-
-```
-StreamlitPage
-│
-├── Header & Description
-│
-├── Sidebar
-│   ├── Configuration Section
-│   │   ├── Initial Capital Input
-│   │   ├── Start Year Selectbox
-│   │   ├── End Year Selectbox
-│   │   ├── Number of Stocks Slider
-│   │   └── Strategy Selectbox
-│   │
-│   └── Run Button
-│
-└── Main Content
-    │
-    ├── Info Boxes (Optimization Highlights)
-    │
-    ├── Results Section (Conditional)
-    │   │
-    │   ├── Metrics Row (3 columns)
-    │   │   ├── Final Portfolio Value
-    │   │   ├── Total Return
-    │   │   └── CAGR
-    │   │
-    │   ├── Performance Chart (Plotly)
-    │   │   ├── Portfolio Value Line
-    │   │   ├── QQQ Benchmark Line
-    │   │   └── SPY Benchmark Line
-    │   │
-    │   ├── Holdings Breakdown (Bar Chart)
-    │   │
-    │   ├── Quarterly Stock Analysis (DataFrame)
-    │   │   └── Pagination
-    │   │
-    │   └── Trade Log (Expandable)
-    │
-    └── Footer (Optimization Info)
-```
-
-### GT/OR Asset Selector UI
-
-```
-HTMLDocument (Embedded)
-│
-├── Header (Gradient Background)
-│   ├── Title: "GT/OR Strategic Asset Selector"
-│   └── Subtitle
-│
-├── Input Section
-│   ├── Text Input (Asset Symbol)
-│   └── Submit Button
-│
-├── Loading Indicator (Hidden by default)
-│   ├── Spinner Animation
-│   └── Status Text
-│
-└── Results Container (Hidden by default)
-    │
-    ├── Strategic Intelligence Card
-    │   ├── Market Regime Classification
-    │   └── Dominant Game Theory Model
-    │
-    └── Prescriptive Policy Card
-        │
-        ├── Strategic Vulnerability Index
-        │   ├── Value Display
-        │   ├── Progress Bar (Color-coded)
-        │   └── Description Text
-        │
-        └── Trading Recommendations (2 columns)
-            ├── Position Trading Card
-            │   ├── Action (BUY/SELL/HOLD)
-            │   ├── Optimal Size
-            │   ├── Target Price Range
-            │   └── Time Horizon
-            │
-            └── Options Trading Card
-                ├── Recommended Option Type
-                ├── Optimal Strike Price
-                ├── Recommended Expiry
-                └── Risk Warning
-```
-
-## 🔌 API Integration Points
-
-```
-External Dependencies:
-│
-├── Yahoo Finance (yfinance)
-│   │
-│   ├── yf.download()
-│   │   └── Bulk historical price data
-│   │
-│   ├── yf.Ticker().info
-│   │   └── Current market data
-│   │
-│   └── yf.Ticker().history()
-│       └── Historical OHLCV data
-│
-├── Plotly
-│   └── Interactive charts and graphs
-│
-├── Pandas
-│   └── Data manipulation and analysis
-│
-├── Streamlit
-│   ├── Web framework
-│   ├── UI components
-│   └── State management
-│
-└── BeautifulSoup (Future use)
-    └── Web scraping for stock screeners
-```
-
-## 📊 State Management
-
-```
-Streamlit Session State
-│
-├── Nasdaq Rotation Module State
-│   ├── cached_data: Dict
-│   │   └── Fetched stock data
-│   │
-│   ├── simulation_results: Dict
-│   │   └── Portfolio simulation output
-│   │
-│   └── user_inputs: Dict
-│       ├── initial_capital
-│       ├── start_year
-│       ├── end_year
-│       ├── top_n
-│       └── strategy
-│
-└── GT/OR Module State
-    └── [Managed by JavaScript]
-        ├── current_symbol
-        ├── analysis_results
-        └── ui_state
-```
-
-## 🚀 Execution Flow
-
-### Application Startup
-
-```
-1. Streamlit loads app.py
-   │
-   ├── Imports nasdaq_rotation_module
-   │   └── Loads classes and functions
-   │
-   └── Imports gtor_selector_module
-       └── Loads UI function
-   │
-2. main() function executes
-   │
-   ├── st.set_page_config()
-   │   └── Sets page title, icon, layout
-   │
-   └── Creates tabs
-       │
-       ├── Tab 1: Calls nasdaq_rotation_tab()
-       │
-       └── Tab 2: Calls gtor_asset_selector_tab()
-   │
-3. User interacts with UI
-   │
-   └── Streamlit reruns on interaction
-       │
-       └── Preserves session state
-```
-
-### Simulation Execution (Nasdaq Rotation)
-
-```
-1. User clicks "Run Simulation"
-   │
-2. Validate inputs
-   │
-3. Initialize components
-   ├── Create OptimizedYahooDataFetcher
-   └── Create OptimizedPortfolioSimulator
-   │
-4. Fetch data (bulk operation)
-   ├── Download all price data
-   ├── Fetch current info
-   └── Calculate market caps
-   │
-5. Run simulation
-   ├── For each quarter:
-   │   ├── Select top 10 stocks
-   │   ├── Rebalance portfolio
-   │   └── Track value
-   │
-6. Fetch benchmark data
-   ├── QQQ prices
-   └── SPY prices
-   │
-7. Calculate metrics
-   ├── Final value
-   ├── Total return
-   └── CAGR
-   │
-8. Display results
-   ├── Render charts
-   ├── Show tables
-   └── Display trade log
-```
-
-## 🎯 Design Patterns Used
-
-### 1. **Module Pattern**
-- Separation of concerns
-- Each module has a single responsibility
-
-### 2. **Caching Pattern**
-- Data is cached to avoid redundant API calls
-- Improves performance significantly
-
-### 3. **Factory Pattern**
-- Data fetcher classes create data objects
-- Portfolio simulator creates simulation results
-
-### 4. **Strategy Pattern**
-- Different rebalancing strategies (Full vs Add-Only)
-- Selected at runtime
-
-### 5. **Observer Pattern**
-- Streamlit watches for UI changes
-- Automatically reruns on interaction
-
-## 📈 Performance Optimization
-
-```
-Optimization Strategies:
-│
-├── Bulk Data Fetching
-│   └── One API call for all tickers
-│       └── 10x faster than individual calls
-│
-├── Smart Caching
-│   ├── Cache prices
-│   ├── Cache market caps
-│   └── Reuse across quarters
-│
-├── Early Filtering
-│   └── Only fetch data for top candidates
-│
-└── Lazy Loading
-    └── Only fetch when needed
-```
-
-## 🔐 Error Handling Strategy
-
-```
-Error Handling Layers:
-│
-├── API Level
-│   ├── Try/catch for network errors
-│   ├── Fallback to cached data
-│   └── User-friendly error messages
-│
-├── Data Level
-│   ├── Validate data integrity
-│   ├── Handle missing values
-│   └── Filter invalid entries
-│
-└── UI Level
-    ├── Display warnings
-    ├── Show progress indicators
-    └── Provide feedback
-```
-
-## 🎨 Styling and Theming
-
-### Nasdaq Rotation Module
-- Uses Streamlit's default theme
-- Plotly charts with consistent colors
-- Clean, professional layout
-
-### GT/OR Asset Selector
-- Custom dark theme
-- Tailwind CSS for styling
-- Gradient backgrounds
-- Smooth animations
+[![GitHub](https://img.shields.io/badge/GitHub-dagumati%2FNasdaq__Top10-181717?logo=github)](https://github.com/dagumati/Nasdaq_Top10)
 
 ---
 
-This architecture document provides a comprehensive overview of the application structure, data flow, and design decisions.
+## System Architecture
 
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CLIENT LAYER                                 │
+│                                                                     │
+│  React 18 SPA (Vite)       Streamlit Dashboard (legacy)             │
+│  ├── React Router v6        ├── Global Research Tab                 │
+│  ├── Recharts               ├── Weekly DCA Tab                      │
+│  ├── Axios + interceptors   └── Nasdaq Rotation Tab                 │
+│  └── Dark / Light Theme                                             │
+└────────────────────┬────────────────────────────┬───────────────────┘
+                     │ HTTP /api/*                 │ Direct Python import
+┌────────────────────▼───────────────┐     ┌──────▼──────────────────┐
+│      FastAPI Backend (v2.0)        │     │  Streamlit App (app.py) │
+│                                    │     └─────────────────────────┘
+│  /api/screener/*                   │
+│  /api/recommendations/*            │
+│  /api/portfolio/*                  │
+│  /api/dca/*                        │
+│  /api/nasdaq/*                     │
+│  /api/health                       │
+└────────────────────┬───────────────┘
+                     │ Python imports
+┌────────────────────▼───────────────────────────────────────────────┐
+│                   BUSINESS LOGIC LAYER                              │
+│                                                                     │
+│  global_research_module.py    weekly_dca_module.py                  │
+│  ├── GlobalResearchEngine     ├── DCASimulator                      │
+│  │   ├── fetch_asset_data()   │   ├── simulate_dca()               │
+│  │   ├── calculate_scores()   │   └── _data_cache                  │
+│  │   ├── screen_universe()    └── GrowthProjector                  │
+│  │   └── _score_cache             └── project_growth()             │
+│  └── ModelPortfolioBuilder    nasdaq_rotation_module.py            │
+│      └── 4 portfolios         ├── OptimizedYahooDataFetcher        │
+│                               └── OptimizedPortfolioSimulator      │
+└────────────────────┬───────────────────────────────────────────────┘
+                     │
+┌────────────────────▼───────────────────────────────────────────────┐
+│                   DATA LAYER                                        │
+│                                                                     │
+│  yfinance (primary)    FMP API (optional)   Finnhub (optional)     │
+│  ├── Price history     Financial data       Real-time quotes       │
+│  ├── Current prices    Fundamentals         Earnings               │
+│  └── Market metadata   Dividends            Analyst ratings        │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Project Structure
+
+```
+Nasdaq_Top10/
+│
+├── app.py                          # Streamlit entry point (5 tabs)
+├── requirements.txt                # Python dependencies (root)
+│
+├── backend/                        # FastAPI REST backend (NEW v2.0)
+│   ├── main.py                     # App factory, CORS, router registration
+│   ├── requirements.txt            # Backend-specific deps (fastapi, uvicorn)
+│   ├── models/
+│   │   └── schemas.py              # Pydantic request/response models
+│   ├── routers/
+│   │   ├── screener.py             # GET /api/screener/*
+│   │   ├── recommendations.py      # GET /api/recommendations/*
+│   │   ├── portfolio.py            # GET /api/portfolio/*
+│   │   ├── dca.py                  # GET /api/dca/*
+│   │   └── nasdaq.py               # GET /api/nasdaq/*
+│   └── tests/
+│       └── test_api.py             # pytest test suite
+│
+├── frontend/                       # React 18 frontend (NEW v2.0)
+│   ├── package.json
+│   ├── vite.config.js              # Vite + /api proxy to :8000
+│   ├── index.html
+│   ├── .babelrc
+│   ├── jest.config.cjs
+│   └── src/
+│       ├── main.jsx                # ReactDOM.createRoot
+│       ├── App.jsx                 # Routes
+│       ├── styles/global.css       # CSS design system (dark + light)
+│       ├── context/
+│       │   └── ThemeContext.jsx    # Dark/light theme provider
+│       ├── services/
+│       │   └── api.js              # Axios API service layer
+│       ├── hooks/
+│       │   └── useApi.js           # Generic async API hook
+│       ├── components/
+│       │   ├── Layout/
+│       │   │   ├── Layout.jsx      # Shell + health check
+│       │   │   ├── Sidebar.jsx     # Fixed nav with active indicators
+│       │   │   └── Navbar.jsx      # Title + theme toggle + API status
+│       │   ├── Cards/
+│       │   │   ├── MetricCard.jsx  # KPI metric display
+│       │   │   └── SharedUI.jsx    # RatingBadge, ScoreBar, formatters
+│       │   └── Tables/
+│       │       └── ScreenerTable.jsx  # Sortable results table
+│       └── pages/
+│           ├── Dashboard.jsx          # Home — feature cards + metrics
+│           ├── GlobalScreener.jsx     # Screener + radar + scatter chart
+│           ├── WeeklyRecommendations.jsx  # Picks + pie chart
+│           ├── ModelPortfolios.jsx    # 4 portfolios + holdings + pie
+│           ├── DCASimulator.jsx       # Growth projection + backtest
+│           └── NasdaqRotation.jsx     # Rotation simulation + charts
+│
+├── global_research_module.py       # Core research engine
+├── weekly_dca_module.py            # DCA simulator & growth projector
+├── global_research_dashboard.py    # Streamlit dashboard (3 tabs)
+├── nasdaq_rotation_module.py       # Nasdaq rotation logic
+├── nasdaq_rotation_dashboard.py    # Streamlit Nasdaq tab
+├── gtor_selector_module.py         # GT/OR asset selector
+│
+├── README.md
+├── ARCHITECTURE.md                 # This file
+├── QUICKSTART.md
+├── MODULE_STRUCTURE.md
+├── HOSTING_GUIDE.md                # NEW — deployment guide
+└── venv/                           # Python virtual environment
+```
+
+---
+
+## Data Flow
+
+### Screener Request (React → API → yfinance)
+
+```
+User clicks "Run Screener"
+    │
+    ▼
+GlobalScreener.jsx
+    │  GET /api/screener/run?universe=thematic&top_n=15
+    ╠══════════════════════════════════════════════╗
+    ▼                                              ║
+FastAPI screener.py                                ║ Axios interceptor
+    │                                              ║ normalises errors
+    ▼                                              ║
+GlobalResearchEngine.screen_universe()             ║
+    │  For each ticker in universe:                ║
+    ├── fetch_asset_data(ticker)                   ║
+    │       └── yfinance.Ticker.history()          ║
+    ├── calculate_composite_score(data)            ║
+    │       ├── fundamental_score (30 pts)         ║
+    │       ├── momentum_score    (25 pts)         ║
+    │       ├── risk_adj_score    (25 pts)         ║
+    │       └── macro_score       (20 pts)         ║
+    └── sort by composite_score desc               ║
+    │                                              ║
+    ▼                                              ║
+JSON response → React state → table + charts ══════╝
+```
+
+### DCA Projection (pure calculation — no network)
+
+```
+User sets $200/week, 10 years
+    │
+    ▼
+DCASimulator.jsx
+    │  GET /api/dca/scenarios?weekly_contribution=200&years=10
+    ▼
+GrowthProjector.project_multiple_scenarios()
+    │  For each CAGR scenario:
+    │  weekly_rate = (1 + annual_rate)^(1/52) - 1
+    │  For each week: balance = balance*(1+r) + contribution
+    │
+    ▼
+4 scenario projections → LineChart
+```
+
+---
+
+## Composite Scoring System
+
+| Component | Weight | Signals |
+|-----------|--------|---------|
+| **Fundamental** | 30 pts | P/E ratio, Market cap, Dividend yield |
+| **Momentum** | 25 pts | 50/200-day MA crossover, 3M returns, Volume trend |
+| **Risk-Adjusted** | 25 pts | Sharpe ratio, Max drawdown, Volatility |
+| **Macro Alignment** | 20 pts | Trend strength, relative volume |
+
+| Score | Rating | Action |
+|-------|--------|--------|
+| 80–100 | Strong Buy | Accumulate aggressively |
+| 60–79  | Buy | Accumulate steadily |
+| 45–59  | Hold | Maintain positions |
+| 30–44  | Reduce | Scale back |
+| 0–29   | Avoid | Skip |
+
+---
+
+## Caching Strategy
+
+| Layer | Mechanism | TTL |
+|-------|-----------|-----|
+| `GlobalResearchEngine._data_cache` | In-memory dict | Session lifetime |
+| `GlobalResearchEngine._score_cache` | In-memory dict | Session lifetime |
+| `DCASimulator._price_cache` | In-memory dict | Session lifetime |
+| React (future) | React Query / SWR | Configurable |
+
+---
+
+## API Endpoints Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/health` | Health check |
+| GET | `/api/screener/universes` | List all screening universes |
+| GET | `/api/screener/run` | Run screener with params |
+| GET | `/api/screener/asset/{ticker}` | Single asset detail |
+| GET | `/api/recommendations/weekly` | Weekly picks |
+| GET | `/api/portfolio/list` | Available portfolios |
+| GET | `/api/portfolio/build` | Build portfolio with live data |
+| GET | `/api/dca/project` | Single growth projection |
+| GET | `/api/dca/scenarios` | 4-scenario comparison |
+| GET | `/api/dca/simulate` | Historical DCA backtest |
+| GET | `/api/nasdaq/simulate` | Nasdaq rotation backtest |
+| GET | `/api/nasdaq/universe` | Nasdaq 100 tickers |
+
+Interactive API docs: **`/api/docs`** (Swagger UI)
+
+---
+
+## Technology Stack
+
+### Backend
+- **FastAPI** — async REST framework
+- **Uvicorn** — ASGI server
+- **Pydantic v2** — request/response validation
+- **yfinance** — market data (primary)
+- **pandas / numpy** — data processing
+
+### Frontend
+- **React 18** — UI library
+- **Vite** — build tool with HMR
+- **React Router v6** — client-side routing
+- **Recharts** — chart library
+- **Axios** — HTTP client
+- **Lucide React** — icon library
+
+### Testing
+- **pytest** — backend unit & integration tests
+- **FastAPI TestClient** — API route testing
+- **Jest** — JavaScript test runner
+- **React Testing Library** — component testing
+
+---
+
+## Security Considerations
+
+- CORS configured — only specified origins allowed
+- No API keys stored client-side
+- yfinance requires no authentication
+- Optional API keys (FMP, Finnhub) loaded from environment variables only
+- Input validation via Pydantic on all endpoints
